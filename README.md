@@ -1,6 +1,8 @@
 Sandpiles :: Fractal Generation And Visualisation
 =================================================
 
+![Sandpile](index.png)
+
 Inspired by the [Numberphile video](https://www.youtube.com/watch?v=1MtEUErz7Gg)
 on sandpile fractals, I wrote a small python (later go) program to generate the
 fractal shown towards the end of the video. The next obvious step was to try new
