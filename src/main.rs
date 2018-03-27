@@ -13,6 +13,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process;
+use std::time::SystemTime;
 
 // Helper macro for making map literals
 //
@@ -217,6 +218,7 @@ impl<'a> Grid<'a> {
         let mut cell_max = starting_sand + 1;
         let mut iterations = 0;
         let mut topples = 0;
+        let start = SystemTime::now();
 
         // Topple until we reach steady state
         loop {
@@ -273,6 +275,23 @@ impl<'a> Grid<'a> {
                 }
             }
             iterations += 1;
+            if iterations % 10 == 0 {
+                eprint!(".");
+            }
+            if iterations % 500 == 0 {
+                // Display some stats about the current run
+                let duration = match start.elapsed() {
+                    Ok(elapsed) => format!("{}", elapsed.as_secs()),
+                    Err(_) => String::from("Error in getting run-time"),
+                };
+                eprintln!(
+                    "\n* current run duration: {}s\n* {} iterations\n* {} topples\n* {} cells created",
+                    duration,
+                    iterations,
+                    topples,
+                    self.grid.len(),
+                );
+            }
         }
     }
 
