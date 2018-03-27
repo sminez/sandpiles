@@ -1,0 +1,9 @@
+[package]
+name = "sandpiles"
+version = "0.2.0"
+authors = ["sminez <innesdmorrison@gmail.com>"]
+
+[dependencies]
+serde = "1.0.36"
+serde_json = "1.0"
+serde_derive = "1.0.36"
