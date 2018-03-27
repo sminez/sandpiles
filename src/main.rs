@@ -245,8 +245,7 @@ impl<'a> Grid<'a> {
                     let per_cell = *sand / self.max_per_cell;
                     *sand %= self.max_per_cell;
 
-                    for target in self.topple_cells.iter() {
-                        let (dx, dy) = (target.0, target.1);
+                    for &(dx, dy) in self.topple_cells.iter() {
                         let loc = (row + dx, col + dy);
 
                         // Keep track of the dimensions of the grid
@@ -259,8 +258,8 @@ impl<'a> Grid<'a> {
 
                         let new_sand = new_sand.entry(loc).or_insert(0);
                         *new_sand += per_cell;
-                        topples += 1;
                     }
+                    topples += 1;
                 }
             }
 
