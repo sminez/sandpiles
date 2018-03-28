@@ -28,8 +28,10 @@ You will need a recent version of Rust installed (tested on 1.26.0 nightly) in
 order to compile the code used for generating the datasets. Once you have Rust
 installed run the following command to build the binary:
 ```bash
-$ cargo build --release
+$ RUSTFLAGS="-C target-cpu=native" cargo build --release
 ```
+This will give you the most optimised version of the code (that I've been able
+to find so far!)
 
 ### Running the binary directly
 If you want to just generate output JSON files then run the following in the terminal
