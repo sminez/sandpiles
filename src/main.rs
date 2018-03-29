@@ -15,9 +15,8 @@ use std::path::Path;
 use std::process;
 use std::time::SystemTime;
 
-// Helper macro for making map literals
-//
-// >>> let my_map = map!{ "this" => "that", "foo" => "bar" };
+
+// Helper macro for making a map literal
 macro_rules! map(
     { $($key:expr => $value:expr),+ } => {
         {
@@ -28,174 +27,230 @@ macro_rules! map(
      };
 );
 
+
+// Convert a human readable toppling pattern into a vector of cell offsets
+macro_rules! pattern(
+    [$($row:tt),+] => {
+        {
+            let mut vec = Vec::new();
+            let mut _rix = 0;
+            $({
+                let offset = ($row.len() / 2) as i8;
+                for (cix, cell) in $row.chars().enumerate() {
+                    if cell != '.' {
+                        // This will panic if non-numeric characters are given.
+                        let count = cell.to_digit(10).unwrap();
+                        for _ in 0..count {
+                            vec.push((offset - cix as i8, offset - _rix as i8));
+                        }
+                    };
+                };
+                _rix += 1;
+            })+
+            vec
+        }
+    };
+);
+
+
 // Alias for our cell coordinates
-type Cell = (i32, i32);
+type Cell = (i8, i8);
 
 // A result struct for storing results as JSON using serde
 #[derive(Serialize, Deserialize)]
 struct SandResult {
-    iterations: i64,
-    topples:    i64,
-    grid_size:  i32,
-    grid:       Vec<Vec<i32>>,
+    iterations: u64,
+    topples:    u64,
+    grid_size:  u32,
+    grid:       Vec<Vec<u32>>,
 }
+
 
 // Rather than bring in lazy static, I'm just building the pattern list when we
 // start
 fn get_patterns() -> HashMap<&'static str, Vec<Cell>> {
     map!{
-        "+" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0)
+        "+" => pattern![
+            ".1.",
+            "1.1",
+            ".1."
         ],
-        "x" => vec![
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "x" => pattern![
+            "1.1",
+            "...",
+            "1.1"
         ],
-        "o" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o" => pattern![
+            "111",
+            "1.1",
+            "111"
         ],
-        "o+" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o+" => pattern![
+            "121",
+            "2.2",
+            "121"
         ],
-        "oo" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (-1, -2), (-1, 2), (1, -2), (1, 2),
-            (-2, -1), (-2, 1), (2, -1), (2, 1),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (2, 2), (2, -2), (-2, 2), (-2, -2)
+        "oo" => pattern![
+            "11211",
+            "11111",
+            "21.12",
+            "11111",
+            "11211"
         ],
-        "ox" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "ox" => pattern![
+            "212",
+            "1.1",
+            "212"
         ],
-        "++" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0)
+        "++" => pattern![
+            "..1..",
+            "..1..",
+            "11.11",
+            "..1..",
+            "..1.."
         ],
-        "+++" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0)
+        "+++" => pattern![
+            "..2..",
+            "..1..",
+            "21.12",
+            "..1..",
+            "..2.."
         ],
-        "+_+" => vec![
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 3), (0, -3), (3, 0), (-3, 0)
+        "+_+" => pattern![
+            "...1...",
+            "...1...",
+            ".......",
+            "11...11",
+            ".......",
+            "...1...",
+            "...1..."
         ],
-        "o++" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o++" => pattern![
+            "..1..",
+            ".111.",
+            "11.11",
+            ".111.",
+            "..1.."
         ],
-        "o+++" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 3), (0, -3), (3, 0), (-3, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o+++" => pattern![
+            "...1...",
+            "...1...",
+            "..111..",
+            "111.111",
+            "..111..",
+            "...1...",
+            "...1..."
         ],
-        "o_+" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 3), (0, -3), (3, 0), (-3, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o_+" => pattern![
+            "...1...",
+            ".......",
+            "..111..",
+            "1.1.1.1",
+            "..111..",
+            ".......",
+            "...1..."
         ],
-        "o-+" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o-+" => pattern![
+            "..1..",
+            ".121.",
+            "12.21",
+            ".121.",
+            "..1.."
         ],
-        "o-+x" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o-+x" => pattern![
+            "..1..",
+            ".222.",
+            "12.21",
+            ".222.",
+            "..1.."
         ],
-        "o=+" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "o=+" => pattern![
+            "..2..",
+            ".111.",
+            "21.12",
+            ".111.",
+            "..2.."
         ],
-        "+o" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (-1, -2), (-1, 2), (1, -2), (1, 2),
-            (-2, -1), (-2, 1), (2, -1), (2, 1),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (2, 2), (2, -2), (-2, 2), (-2, -2)
+        "+o" => pattern![
+            "11211",
+            "1.1.1",
+            "21.12",
+            "1.1.1",
+            "11211"
         ],
-        "xo" => vec![
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (-1, -2), (-1, 2), (1, -2), (1, 2),
-            (-2, -1), (-2, 1), (2, -1), (2, 1),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (2, 2), (2, -2), (-2, 2), (-2, -2)
+        "xo" => pattern![
+            "11211",
+            "11.11",
+            "2...2",
+            "11.11",
+            "11211"
         ],
-        "+x" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (2, 2), (2, -2), (-2, 2), (-2, -2)
+        "+x" => pattern![
+            "1...1",
+            "..1..",
+            ".1.1.",
+            "..1..",
+            "1...1"
         ],
-        "x+" => vec![
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (0, 2), (0, -2), (2, 0), (-2, 0)
+        "x+" => pattern![
+            "..1..",
+            ".1.1.",
+            "1...1",
+            ".1.1.",
+            "..1.."
         ],
-        "::" => vec![
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 2), (1, -2), (2, 2), (2, -2),
-            (-1, 2), (-1, -2), (-2, 2), (-2, -2)
+        "::" => pattern![
+            "11.11",
+            ".1.1.",
+            ".....",
+            ".1.1.",
+            "11.11"
         ],
-        ";;" => vec![
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 2), (1, -2), (2, 1), (2, -1),
-            (-1, 2), (-1, -2), (-2, 1), (-2, -1)
+        ";;" => pattern![
+            ".1.1.",
+            "11.11",
+            ".....",
+            "11.11",
+            ".1.1."
         ],
-        "Y" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (2, 1), (2, -1), (-2, 1), (-2, -1),
-            (1, 2), (1, -2), (-1, 2), (-1, -2)
+        "Y" => pattern![
+            ".111.",
+            "1.1.1",
+            "11.11",
+            "1.1.1",
+            ".111."
         ],
-        "A" => vec![
-            (0, 2), (0, -2), (2, 0), (-2, 0),
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        "H" => pattern![
+            ".1.1.",
+            "11211",
+            ".2.2.",
+            "11211",
+            ".1.1."
         ],
-        "H" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 2), (1, -2), (2, 2), (2, -2),
-            (-1, 2), (-1, -2), (-2, 2), (-2, -2)
-        ],
-        "sh" => vec![
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
-            (1, 2), (1, -2), (2, 1), (2, -1),
-            (-1, 2), (-1, -2), (-2, 1), (-2, -1)
+        "sh" => pattern![
+            ".1.1.",
+            "11111",
+            ".1.1.",
+            "11111",
+            ".1.1."
         ]
     }
 }
 
 // Control structure for managing topples
 struct Grid<'a> {
-    grid:         HashMap<Cell, i32>,
+    grid:         HashMap<Cell, u32>,
     sand_power:   u32,
-    max_per_cell: i32,
+    max_per_cell: u32,
     topple_cells: &'a Vec<Cell>,
-    max_dim:      i32,
+    max_dim:      i8,
     pattern:      String,
 }
 
 impl<'a> Grid<'a> {
     fn new(sand_power: u32, pattern: String, topple_cells: &'a Vec<Cell>) -> Grid<'a> {
         let grid = HashMap::new();
-        let max_per_cell = topple_cells.len() as i32;
+        let max_per_cell = topple_cells.len() as u32;
         let max_dim = 1;
 
         Grid {
@@ -211,7 +266,7 @@ impl<'a> Grid<'a> {
     // Topple the grid using the hashmap
     fn topple(&mut self) {
         // Set the starting sand.
-        let base: i32 = 2;
+        let base: u32 = 2;
         let starting_sand = base.pow(self.sand_power);
         self.grid.insert((0, 0), starting_sand);
 
@@ -258,8 +313,8 @@ impl<'a> Grid<'a> {
                             self.max_dim = loc.1
                         }
 
-                        let new_sand = new_sand.entry(loc).or_insert(0);
-                        *new_sand += per_cell;
+                        let new_cell_sand = new_sand.entry(loc).or_insert(0);
+                        *new_cell_sand += per_cell;
                     }
                     topples += 1;
                 }
@@ -296,12 +351,12 @@ impl<'a> Grid<'a> {
     }
 
     // Convert the internal grid to csv format
-    fn render_grid(&self, iterations: i64, topples: i64) {
+    fn render_grid(&self, iterations: u64, topples: u64) {
         // Map the max coordinates (centred on 0,0) to array size
         let offset = self.max_dim;
-        let grid_size = offset * 2 + 1;
+        let grid_size = (offset * 2 + 1) as u32;
 
-        let mut grid: Vec<Vec<i32>> = vec![vec![0; grid_size as usize]; grid_size as usize];
+        let mut grid: Vec<Vec<u32>> = vec![vec![0; grid_size as usize]; grid_size as usize];
         for (&(row, col), sand) in self.grid.iter() {
             let x = row + offset;
             let y = col + offset;
