@@ -15,7 +15,6 @@ use std::path::Path;
 use std::process;
 use std::time::SystemTime;
 
-
 // Helper macro for making a map literal
 macro_rules! map(
     { $($key:expr => $value:expr),+ } => {
@@ -26,7 +25,6 @@ macro_rules! map(
         }
      };
 );
-
 
 // Convert a human readable toppling pattern into a vector of cell offsets
 macro_rules! pattern(
@@ -52,7 +50,6 @@ macro_rules! pattern(
     };
 );
 
-
 // Alias for our cell coordinates
 type Cell = (i8, i8);
 
@@ -60,11 +57,10 @@ type Cell = (i8, i8);
 #[derive(Serialize, Deserialize)]
 struct SandResult {
     iterations: u64,
-    topples:    u64,
-    grid_size:  u32,
-    grid:       Vec<Vec<u32>>,
+    topples: u64,
+    grid_size: u32,
+    grid: Vec<Vec<u32>>,
 }
-
 
 // Rather than bring in lazy static, I'm just building the pattern list when we
 // start
@@ -239,12 +235,12 @@ fn get_patterns() -> HashMap<&'static str, Vec<Cell>> {
 
 // Control structure for managing topples
 struct Grid<'a> {
-    grid:         HashMap<Cell, u32>,
-    sand_power:   u32,
+    grid: HashMap<Cell, u32>,
+    sand_power: u32,
     max_per_cell: u32,
     topple_cells: &'a Vec<Cell>,
-    max_dim:      i8,
-    pattern:      String,
+    max_dim: i8,
+    pattern: String,
 }
 
 impl<'a> Grid<'a> {
