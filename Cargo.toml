@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 colorgrad = "0.6.2"
+fnv = "1.0.7"
 plotters = "0.3.4"
 rayon = "1.6.0"
 serde = { version = "1.0.143", features = ["derive"] }

@@ -20,10 +20,6 @@ fn main() -> anyhow::Result<()> {
 
             let mut grid = Grid::new(sand_power, pattern, topple_cells.clone());
             let iterations = grid.topple();
-            let dim = grid.max_dim * 2 + 1;
-
-            println!("\nToppling took {iterations} iterations.");
-            println!("The final grid size is {dim}x{dim}.");
 
             let r = grid.render(iterations);
             render_png(r)?;
