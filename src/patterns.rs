@@ -25,7 +25,7 @@ macro_rules! pattern(
                         // This will panic if non-numeric characters are given.
                         let count = cell.to_digit(10).unwrap();
                         for _ in 0..count {
-                            vec.push((offset - cix as i16, offset - _rix as i16));
+                            vec.push((offset - _rix as i16, offset - cix as i16));
                         }
                     };
                 };
@@ -54,6 +54,20 @@ pub fn patterns() -> HashMap<&'static str, Vec<Cell>> {
             "111",
             "1.1",
             "111"
+        ],
+        "O" => pattern![
+            "11111",
+            "1...1",
+            "1...1",
+            "1...1",
+            "11111"
+        ],
+        "xO" => pattern![
+            "11111",
+            "11.11",
+            "1...1",
+            "11.11",
+            "11111"
         ],
         "o+" => pattern![
             "121",

@@ -7,7 +7,6 @@ use rayon::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::max,
-    fmt,
     fs::{self, File},
     io::Write,
     path::Path,
@@ -121,7 +120,6 @@ impl Grid {
         }
 
         self.grid = grid;
-
         self.max_dim = self
             .grid
             .keys()
@@ -149,7 +147,7 @@ impl Grid {
         for (&(row, col), &sand) in self.grid.iter() {
             let x = row + offset;
             let y = col + offset;
-            grid[x as usize][y as usize] = sand as u8;
+            grid[y as usize][x as usize] = sand as u8;
         }
 
         RenderedGrid {
