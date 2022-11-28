@@ -1,4 +1,4 @@
-use crate::Cell;
+use crate::{patterns::patterns, Cell};
 use fnv::FnvHashMap;
 use rayon::{
     iter::{once, Either},
@@ -7,22 +7,75 @@ use rayon::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::max,
+    convert::TryFrom,
     fs::{self, File},
-    io::Write,
+    io::{Read, Write},
     path::Path,
     time::SystemTime,
 };
 
 #[derive(Serialize, Deserialize)]
 pub struct RenderedGrid {
-    pub iterations: usize,
-    pub grid_size: u32,
+    pub pattern: String,
+    pub power: u32,
     pub grid: Vec<Vec<u8>>,
 }
 
+impl RenderedGrid {
+    pub fn write(&self) -> anyhow::Result<()> {
+        let dir_name = format!("data/{}", self.pattern);
+        if !Path::new(dir_name.as_str()).exists() {
+            fs::create_dir(dir_name)?;
+        }
+
+        let bytes = bincode::serialize(&self)?;
+
+        let mut file = File::create(format!("data/{}-{}.dat", self.pattern, self.power))?;
+        file.write_all(&bytes)?;
+
+        Ok(())
+    }
+
+    pub fn read(path: &str) -> anyhow::Result<Self> {
+        let mut file = File::open(path)?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes)?;
+
+        Ok(bincode::deserialize(&bytes)?)
+    }
+}
+
+impl From<Grid> for RenderedGrid {
+    fn from(
+        Grid {
+            inner,
+            power,
+            max_dim,
+            pattern,
+            ..
+        }: Grid,
+    ) -> Self {
+        let offset = max_dim;
+        let grid_size = (offset * 2 + 1) as u32;
+
+        let mut grid: Vec<Vec<u8>> = vec![vec![0; grid_size as usize]; grid_size as usize];
+        for (&(row, col), &sand) in inner.iter() {
+            let x = row + offset;
+            let y = col + offset;
+            grid[y as usize][x as usize] = sand as u8;
+        }
+
+        RenderedGrid {
+            pattern,
+            power,
+            grid,
+        }
+    }
+}
+
 pub struct Grid {
-    pub grid: FnvHashMap<Cell, u32>,
-    pub sand_power: u32,
+    pub inner: FnvHashMap<Cell, u32>,
+    pub power: u32,
     pub max_per_cell: u32,
     pub topple_cells: Vec<Cell>,
     pub max_dim: i16,
@@ -30,23 +83,22 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(sand_power: u32, pattern: String, topple_cells: Vec<Cell>) -> Grid {
-        let grid = FnvHashMap::default();
+    pub fn new(power: u32, pattern: String, topple_cells: Vec<Cell>) -> Grid {
         let max_per_cell = topple_cells.len() as u32;
         let max_dim = 1;
 
         Grid {
-            grid,
+            inner: Default::default(),
             max_per_cell,
-            sand_power,
+            power,
             topple_cells,
             max_dim,
             pattern,
         }
     }
 
-    pub fn topple(&mut self) -> usize {
-        let starting_sand = 2_u32.pow(self.sand_power);
+    pub fn topple(&mut self) {
+        let starting_sand = 2_u32.pow(self.power);
         let mut grid = FnvHashMap::default();
         grid.insert((0, 0), starting_sand);
 
@@ -119,9 +171,9 @@ impl Grid {
             }
         }
 
-        self.grid = grid;
+        self.inner = grid;
         self.max_dim = self
-            .grid
+            .inner
             .keys()
             .map(|(x, y)| max(x.abs(), y.abs()))
             .max()
@@ -135,41 +187,33 @@ impl Grid {
         println!("\nToppling took {iterations} iterations.");
         println!("The final grid size is {dim}x{dim}.");
         println!("Final run duration: {duration}s");
-
-        iterations
     }
+}
 
-    pub fn render(&self, iterations: usize) -> RenderedGrid {
-        let offset = self.max_dim;
-        let grid_size = (offset * 2 + 1) as u32;
+impl TryFrom<RenderedGrid> for Grid {
+    type Error = String;
 
-        let mut grid: Vec<Vec<u8>> = vec![vec![0; grid_size as usize]; grid_size as usize];
-        for (&(row, col), &sand) in self.grid.iter() {
-            let x = row + offset;
-            let y = col + offset;
-            grid[y as usize][x as usize] = sand as u8;
-        }
-
+    fn try_from(
         RenderedGrid {
-            iterations,
-            grid_size,
-            grid,
+            pattern,
+            power,
+            grid: cells,
+        }: RenderedGrid,
+    ) -> Result<Self, Self::Error> {
+        let topple_cells = patterns()
+            .remove(&pattern.as_ref())
+            .ok_or_else(|| format!("unknown pattern: '{pattern}'"))?;
+
+        let mut grid = Self::new(power, pattern, topple_cells);
+        let offset = ((cells.len() - 1) / 2) as i16;
+
+        for (i, row) in cells.into_iter().enumerate() {
+            for (j, sand) in row.into_iter().enumerate() {
+                let cell = (i as i16 - offset, j as i16 - offset);
+                grid.inner.insert(cell, sand as u32);
+            }
         }
-    }
 
-    pub fn write_result(&self, res: RenderedGrid) -> anyhow::Result<()> {
-        let dir_name = format!("json/{}", self.pattern);
-        if !Path::new(dir_name.as_str()).exists() {
-            fs::create_dir(dir_name)?;
-        }
-
-        let mut file = File::create(format!(
-            "json/{}/2_{}_{}.json",
-            self.pattern, self.sand_power, self.pattern
-        ))?;
-
-        write!(file, "{}", serde_json::to_string(&res).unwrap())?;
-
-        Ok(())
+        Ok(grid)
     }
 }

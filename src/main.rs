@@ -19,9 +19,12 @@ fn main() -> anyhow::Result<()> {
             println!("Pattern:       {}", pattern);
 
             let mut grid = Grid::new(sand_power, pattern, topple_cells.clone());
-            let iterations = grid.topple();
+            let starting_sand = 2_u32.pow(sand_power);
+            grid.inner.insert((0, 0), starting_sand);
 
-            let r = grid.render(iterations);
+            grid.topple();
+
+            let r: RenderedGrid = grid.into();
             render_png(r)?;
 
             // grid.write_result(res)?;
@@ -36,17 +39,15 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn render_png(
-    RenderedGrid {
-        grid_size, grid, ..
-    }: RenderedGrid,
-) -> anyhow::Result<()> {
+fn render_png(RenderedGrid { grid, .. }: RenderedGrid) -> anyhow::Result<()> {
     let desired = 700;
+    let grid_size = grid.len();
     // Pad so that our pixel dimensions are a multiple of the grid size
     let dim = desired + grid_size - (desired % grid_size);
     println!("{dim}x{dim}");
 
-    let root_drawing_area = BitMapBackend::new("example.png", (dim, dim)).into_drawing_area();
+    let root_drawing_area =
+        BitMapBackend::new("example.png", (dim as u32, dim as u32)).into_drawing_area();
     let grid_size = grid_size as usize;
     let child_drawing_areas = root_drawing_area.split_evenly((grid_size, grid_size));
     let max_sand = *grid.iter().flatten().max().unwrap() as f64;
