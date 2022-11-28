@@ -1,5 +1,7 @@
 use crate::{patterns::patterns, Cell};
+use anyhow::anyhow;
 use fnv::FnvHashMap;
+use plotters::prelude::*;
 use rayon::{
     iter::{once, Either},
     prelude::*,
@@ -10,9 +12,12 @@ use std::{
     convert::TryFrom,
     fs::{self, File},
     io::{Read, Write},
+    mem::take,
     path::Path,
     time::SystemTime,
 };
+
+const DATA_DIR: &str = "data";
 
 #[derive(Serialize, Deserialize)]
 pub struct RenderedGrid {
@@ -22,15 +27,17 @@ pub struct RenderedGrid {
 }
 
 impl RenderedGrid {
-    pub fn write(&self) -> anyhow::Result<()> {
-        let dir_name = format!("data/{}", self.pattern);
-        if !Path::new(dir_name.as_str()).exists() {
-            fs::create_dir(dir_name)?;
+    pub fn write_single_pattern(&self) -> anyhow::Result<()> {
+        self.write(&format!("{}-{}", self.pattern, self.power))
+    }
+
+    pub fn write(&self, name: &str) -> anyhow::Result<()> {
+        if !Path::new(DATA_DIR).exists() {
+            fs::create_dir(DATA_DIR)?;
         }
 
         let bytes = bincode::serialize(&self)?;
-
-        let mut file = File::create(format!("data/{}-{}.dat", self.pattern, self.power))?;
+        let mut file = File::create(format!("{DATA_DIR}/{}.dat", name))?;
         file.write_all(&bytes)?;
 
         Ok(())
@@ -42,6 +49,37 @@ impl RenderedGrid {
         file.read_to_end(&mut bytes)?;
 
         Ok(bincode::deserialize(&bytes)?)
+    }
+
+    pub fn render_png(&self) -> anyhow::Result<()> {
+        let desired = 700;
+        let grid_size = self.grid.len();
+        // Pad so that our pixel dimensions are a multiple of the grid size
+        let dim = desired + grid_size - (desired % grid_size);
+        println!("{dim}x{dim}");
+
+        let root_drawing_area =
+            BitMapBackend::new("example.png", (dim as u32, dim as u32)).into_drawing_area();
+        let grid_size = grid_size as usize;
+        let child_drawing_areas = root_drawing_area.split_evenly((grid_size, grid_size));
+        let max_sand = *self.grid.iter().flatten().max().unwrap() as f64;
+
+        // See https://docs.rs/colorgrad/latest/colorgrad/index.html#functions
+        // for more palette options
+        let palette = colorgrad::rd_yl_bu();
+
+        for (index, area) in child_drawing_areas.into_iter().enumerate() {
+            let col = index % grid_size;
+            let row = (index - col) / grid_size;
+            let sand = self.grid[row][col] as f64;
+            let raw = palette.at(sand / max_sand).to_rgba8();
+
+            area.fill(&RGBColor(raw[0], raw[1], raw[2]))?;
+        }
+
+        root_drawing_area.present()?;
+
+        Ok(())
     }
 }
 
@@ -98,12 +136,9 @@ impl Grid {
     }
 
     pub fn topple(&mut self) {
-        let starting_sand = 2_u32.pow(self.power);
-        let mut grid = FnvHashMap::default();
-        grid.insert((0, 0), starting_sand);
-
-        let mut cell_max = starting_sand + 1;
+        let mut cell_max = self.max_per_cell + 1;
         let mut iterations = 0;
+        let mut grid = take(&mut self.inner);
         let start = SystemTime::now();
 
         while cell_max >= self.max_per_cell {
@@ -191,7 +226,7 @@ impl Grid {
 }
 
 impl TryFrom<RenderedGrid> for Grid {
-    type Error = String;
+    type Error = anyhow::Error;
 
     fn try_from(
         RenderedGrid {
@@ -202,7 +237,7 @@ impl TryFrom<RenderedGrid> for Grid {
     ) -> Result<Self, Self::Error> {
         let topple_cells = patterns()
             .remove(&pattern.as_ref())
-            .ok_or_else(|| format!("unknown pattern: '{pattern}'"))?;
+            .ok_or_else(|| anyhow!("unknown pattern: '{pattern}'"))?;
 
         let mut grid = Self::new(power, pattern, topple_cells);
         let offset = ((cells.len() - 1) / 2) as i16;
