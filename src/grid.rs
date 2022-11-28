@@ -37,7 +37,7 @@ impl RenderedGrid {
         }
 
         let bytes = bincode::serialize(&self)?;
-        let mut file = File::create(format!("{DATA_DIR}/{}.dat", name))?;
+        let mut file = File::create(format!("{DATA_DIR}/{name}.dat"))?;
         file.write_all(&bytes)?;
 
         Ok(())
@@ -56,7 +56,7 @@ impl RenderedGrid {
         let grid_size = self.grid.len();
         // Pad so that our pixel dimensions are a multiple of the grid size
         let dim = desired + grid_size - (desired % grid_size);
-        println!("{dim}x{dim}");
+        // println!("{dim}x{dim}");
 
         let root_drawing_area =
             BitMapBackend::new("example.png", (dim as u32, dim as u32)).into_drawing_area();
@@ -81,18 +81,8 @@ impl RenderedGrid {
 
         Ok(())
     }
-}
 
-impl From<Grid> for RenderedGrid {
-    fn from(
-        Grid {
-            inner,
-            power,
-            max_dim,
-            pattern,
-            ..
-        }: Grid,
-    ) -> Self {
+    fn from_raw(inner: &FnvHashMap<Cell, u32>, power: u32, max_dim: i16, pattern: String) -> Self {
         let offset = max_dim;
         let grid_size = (offset * 2 + 1) as u32;
 
@@ -108,6 +98,20 @@ impl From<Grid> for RenderedGrid {
             power,
             grid,
         }
+    }
+}
+
+impl From<Grid> for RenderedGrid {
+    fn from(
+        Grid {
+            inner,
+            power,
+            max_dim,
+            pattern,
+            ..
+        }: Grid,
+    ) -> Self {
+        RenderedGrid::from_raw(&inner, power, max_dim, pattern)
     }
 }
 
