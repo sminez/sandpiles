@@ -51,8 +51,7 @@ impl RenderedGrid {
         Ok(bincode::deserialize(&bytes)?)
     }
 
-    pub fn render_png(&self) -> anyhow::Result<()> {
-        let desired = 700;
+    pub fn render_png(&self, desired: usize) -> anyhow::Result<()> {
         let grid_size = self.grid.len();
         // Pad so that our pixel dimensions are a multiple of the grid size
         let dim = desired + grid_size - (desired % grid_size);

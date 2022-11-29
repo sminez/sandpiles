@@ -26,24 +26,33 @@ enum Command {
         pattern: String,
         /// Starting sand: 2^power
         power: u32,
-        /// Render the resulting fractal as a png after computing
-        #[clap(long, short, default_value = "true")]
-        render: bool,
+        /// Skip rendering the resulting fractal as a png after computing
+        #[clap(long, short, default_value = "false")]
+        no_render: bool,
+        /// Dimentions to render at
+        #[clap(default_value = "700")]
+        dimension: usize,
     },
 
     /// Render an existing data file
     Render {
         /// Path to the datafile to render
         path: String,
+        /// Dimentions to render at
+        #[clap(default_value = "700")]
+        dimension: usize,
     },
 
     /// Double the sand of an existing sandpile and re-topple
     Double {
         /// Path to the datafile to render
         path: String,
-        /// Render the resulting fractal as a png after computing
-        #[clap(long, short, default_value = "true")]
-        render: bool,
+        /// Skip rendering the resulting fractal as a png after computing
+        #[clap(long, short, default_value = "false")]
+        no_render: bool,
+        /// Dimentions to render at
+        #[clap(default_value = "700")]
+        dimension: usize,
     },
 
     /// Double the sand of an existing sandpile and re-topple
@@ -52,9 +61,12 @@ enum Command {
         path_1: String,
         /// Path to the datafile to layer on top
         path_2: String,
-        /// Render the resulting fractal as a png after computing
-        #[clap(long, short, default_value = "true")]
-        render: bool,
+        /// Skip rendering the resulting fractal as a png after computing
+        #[clap(long, short, default_value = "false")]
+        no_render: bool,
+        /// Dimentions to render at
+        #[clap(default_value = "700")]
+        dimension: usize,
     },
 }
 
@@ -67,18 +79,24 @@ fn main() -> anyhow::Result<()> {
         Command::Run {
             pattern,
             power,
-            render,
-        } => run(pattern, power, render),
+            no_render,
+            dimension,
+        } => run(pattern, power, !no_render, dimension),
 
-        Command::Render { path } => render(path),
+        Command::Render { path, dimension } => render(path, dimension),
 
-        Command::Double { path, render } => double(path, render),
+        Command::Double {
+            path,
+            no_render,
+            dimension,
+        } => double(path, !no_render, dimension),
 
         Command::Combine {
             path_1,
             path_2,
-            render,
-        } => combine(path_1, path_2, render),
+            no_render,
+            dimension,
+        } => combine(path_1, path_2, !no_render, dimension),
     }
 }
 
@@ -91,7 +109,7 @@ fn list_patterns() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run(pattern: String, power: u32, render: bool) -> anyhow::Result<()> {
+fn run(pattern: String, power: u32, render: bool, dimension: usize) -> anyhow::Result<()> {
     let topple_cells = match patterns().remove(pattern.as_str()) {
         Some(topple_cells) => topple_cells,
         None => {
@@ -113,18 +131,18 @@ fn run(pattern: String, power: u32, render: bool) -> anyhow::Result<()> {
     r.write_single_pattern()?;
 
     if render {
-        r.render_png()?;
+        r.render_png(dimension)?;
     }
 
     Ok(())
 }
 
-fn render(path: String) -> anyhow::Result<()> {
+fn render(path: String, dimension: usize) -> anyhow::Result<()> {
     let r = RenderedGrid::read(&path)?;
-    r.render_png()
+    r.render_png(dimension)
 }
 
-fn double(path: String, render: bool) -> anyhow::Result<()> {
+fn double(path: String, render: bool, dimension: usize) -> anyhow::Result<()> {
     let r = RenderedGrid::read(&path)?;
     let mut grid = Grid::try_from(r)?;
 
@@ -136,13 +154,13 @@ fn double(path: String, render: bool) -> anyhow::Result<()> {
     r.write(&format!("{}-{}", r.pattern, r.power))?;
 
     if render {
-        r.render_png()?;
+        r.render_png(dimension)?;
     }
 
     Ok(())
 }
 
-fn combine(path_1: String, path_2: String, render: bool) -> anyhow::Result<()> {
+fn combine(path_1: String, path_2: String, render: bool, dimension: usize) -> anyhow::Result<()> {
     let r = RenderedGrid::read(&path_1)?;
     let mut grid = Grid::try_from(r)?;
 
@@ -169,7 +187,7 @@ fn combine(path_1: String, path_2: String, render: bool) -> anyhow::Result<()> {
     ))?;
 
     if render {
-        r.render_png()?;
+        r.render_png(dimension)?;
     }
 
     Ok(())
