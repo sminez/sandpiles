@@ -17,6 +17,9 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// List the available patterns for toppling
+    Patterns,
+
     /// Generate a new sandpile fractal using the given pattern and 2^power starting sand
     Run {
         /// Pattern to use
@@ -59,6 +62,8 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
+        Command::Patterns => list_patterns(),
+
         Command::Run {
             pattern,
             power,
@@ -75,6 +80,15 @@ fn main() -> anyhow::Result<()> {
             render,
         } => combine(path_1, path_2, render),
     }
+}
+
+fn list_patterns() -> anyhow::Result<()> {
+    let mut p: Vec<String> = patterns().keys().map(|s| s.to_string()).collect();
+    p.sort();
+
+    println!("Known patterns: {}", p.join(" "));
+
+    Ok(())
 }
 
 fn run(pattern: String, power: u32, render: bool) -> anyhow::Result<()> {

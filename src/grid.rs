@@ -66,6 +66,10 @@ impl RenderedGrid {
 
         // See https://docs.rs/colorgrad/latest/colorgrad/index.html#functions
         // for more palette options
+        // let palette = colorgrad::yl_gn_bu();
+        // let palette = colorgrad::viridis();
+        // let palette = colorgrad::sinebow();
+        // let palette = colorgrad::rainbow();
         let palette = colorgrad::rd_yl_bu();
 
         for (index, area) in child_drawing_areas.into_iter().enumerate() {

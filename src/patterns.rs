@@ -40,6 +40,18 @@ macro_rules! pattern(
 // start
 pub fn patterns() -> HashMap<&'static str, Vec<Cell>> {
     map! {
+        "X++" => pattern![
+            "..1..",
+            ".313.",
+            "11.11",
+            ".313.",
+            "..1.."
+        ],
+        "ivy" => pattern![
+            "121",
+            "222",
+            "121"
+        ],
         "+" => pattern![
             ".1.",
             "1.1",
