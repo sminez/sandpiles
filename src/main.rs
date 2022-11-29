@@ -129,10 +129,11 @@ fn double(path: String, render: bool) -> anyhow::Result<()> {
     let mut grid = Grid::try_from(r)?;
 
     grid.inner.values_mut().for_each(|s| *s *= 2);
+    grid.power += 1;
     grid.topple();
 
     let r: RenderedGrid = grid.into();
-    r.write(&format!("{}-{}", r.pattern, r.power + 1))?;
+    r.write(&format!("{}-{}", r.pattern, r.power))?;
 
     if render {
         r.render_png()?;
