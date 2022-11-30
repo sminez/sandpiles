@@ -20,6 +20,10 @@ enum Command {
     /// List the available patterns for toppling
     Patterns,
 
+    Convert {
+        path: String,
+    },
+
     /// Generate a new sandpile fractal using the given pattern and 2^power starting sand
     Run {
         /// Pattern to use
@@ -97,6 +101,13 @@ fn main() -> anyhow::Result<()> {
             no_render,
             dimension,
         } => combine(path_1, path_2, !no_render, dimension),
+
+        Command::Convert { path } => {
+            println!("reading {path}");
+            let s = std::fs::read_to_string(path)?;
+            let r: RenderedGrid = serde_json::from_str(&s)?;
+            r.write_single_pattern()
+        }
     }
 }
 
