@@ -33,12 +33,17 @@ impl RenderedGrid {
 
     pub fn write(&self, name: &str) -> anyhow::Result<()> {
         if !Path::new(DATA_DIR).exists() {
+            println!("{DATA_DIR} not found: creating...");
             fs::create_dir(DATA_DIR)?;
         }
 
+        let path = format!("{DATA_DIR}/{name}.dat");
+        println!("saving data to {path}...");
+
         let bytes = bincode::serialize(&self)?;
-        let mut file = File::create(format!("{DATA_DIR}/{name}.dat"))?;
+        let mut file = File::create(path)?;
         file.write_all(&bytes)?;
+        println!("done");
 
         Ok(())
     }
@@ -59,6 +64,40 @@ impl RenderedGrid {
 
         let root_drawing_area =
             BitMapBackend::new("example.png", (dim as u32, dim as u32)).into_drawing_area();
+        let grid_size = grid_size as usize;
+        let child_drawing_areas = root_drawing_area.split_evenly((grid_size, grid_size));
+        let max_sand = *self.grid.iter().flatten().max().unwrap() as f64;
+
+        // See https://docs.rs/colorgrad/latest/colorgrad/index.html#functions
+        // for more palette options
+        // let palette = colorgrad::yl_gn_bu();
+        // let palette = colorgrad::viridis();
+        // let palette = colorgrad::sinebow();
+        // let palette = colorgrad::rainbow();
+        let palette = colorgrad::rd_yl_bu();
+
+        for (index, area) in child_drawing_areas.into_iter().enumerate() {
+            let col = index % grid_size;
+            let row = (index - col) / grid_size;
+            let sand = self.grid[row][col] as f64;
+            let raw = palette.at(sand / max_sand).to_rgba8();
+
+            area.fill(&RGBColor(raw[0], raw[1], raw[2]))?;
+        }
+
+        root_drawing_area.present()?;
+
+        Ok(())
+    }
+
+    pub fn render_svg(&self, desired: usize) -> anyhow::Result<()> {
+        let grid_size = self.grid.len();
+        // Pad so that our pixel dimensions are a multiple of the grid size
+        let dim = desired + grid_size - (desired % grid_size);
+        // println!("{dim}x{dim}");
+
+        let root_drawing_area =
+            SVGBackend::new("example.svg", (dim as u32, dim as u32)).into_drawing_area();
         let grid_size = grid_size as usize;
         let child_drawing_areas = root_drawing_area.split_evenly((grid_size, grid_size));
         let max_sand = *self.grid.iter().flatten().max().unwrap() as f64;
