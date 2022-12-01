@@ -31,6 +31,15 @@ impl RenderedGrid {
         self.write(&format!("{}-{}", self.pattern, self.power))
     }
 
+    pub fn write_in_dir(&self, dir: &str, name: &str) -> anyhow::Result<()> {
+        let path = format!("{DATA_DIR}/{dir}");
+        if !Path::new(&path).exists() {
+            fs::create_dir(path)?;
+        }
+
+        self.write(&format!("{dir}/{name}"))
+    }
+
     pub fn write(&self, name: &str) -> anyhow::Result<()> {
         if !Path::new(DATA_DIR).exists() {
             println!("{DATA_DIR} not found: creating...");
@@ -157,6 +166,7 @@ impl From<Grid> for RenderedGrid {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Grid {
     pub inner: FnvHashMap<Cell, u32>,
     pub power: u32,

@@ -68,6 +68,12 @@ enum Command {
         #[clap(default_value = "700")]
         dimension: usize,
     },
+
+    Drip {
+        pattern: String,
+        seed: u32,
+        iterations: usize,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -97,6 +103,12 @@ fn main() -> anyhow::Result<()> {
             no_render,
             dimension,
         } => combine(path_1, path_2, !no_render, dimension),
+
+        Command::Drip {
+            pattern,
+            seed,
+            iterations,
+        } => drip(pattern, seed, iterations),
     }
 }
 
@@ -105,6 +117,34 @@ fn list_patterns() -> anyhow::Result<()> {
     p.sort();
 
     println!("Known patterns: {}", p.join(" "));
+
+    Ok(())
+}
+
+fn drip(pattern: String, seed: u32, iterations: usize) -> anyhow::Result<()> {
+    let topple_cells = match patterns().remove(pattern.as_str()) {
+        Some(topple_cells) => topple_cells,
+        None => {
+            eprintln!("Invalid pattern: `{}`", pattern);
+            bail!("Valid patterns are:\n{:?}", patterns().keys());
+        }
+    };
+
+    println!("Starting sand: {}", seed);
+    println!("Iterations:    {}", iterations);
+    println!("Pattern:       {}", pattern);
+
+    let dir = format!("drip-{pattern}-{seed}");
+    let mut grid = Grid::new(0, pattern, topple_cells);
+
+    for step in 0..iterations {
+        grid.inner.insert((0, 0), seed);
+        grid.topple();
+        let r: RenderedGrid = grid.clone().into();
+        r.write_in_dir(&dir, &step.to_string())?;
+        r.render_png(700)?;
+        std::thread::sleep_ms(200);
+    }
 
     Ok(())
 }
