@@ -52,6 +52,13 @@ pub fn patterns() -> HashMap<&'static str, Vec<Cell>> {
             "222",
             "121"
         ],
+        "lila" => pattern![
+            "1...1",
+            ".121.",
+            ".232.",
+            ".121.",
+            "1...1"
+        ],
         "+" => pattern![
             ".1.",
             "1.1",
@@ -72,6 +79,13 @@ pub fn patterns() -> HashMap<&'static str, Vec<Cell>> {
             "1...1",
             "1...1",
             "1...1",
+            "11111"
+        ],
+        "oO" => pattern![
+            "11111",
+            "11111",
+            "11.11",
+            "11111",
             "11111"
         ],
         "xO" => pattern![
